@@ -51,6 +51,8 @@ app.get("/", (req,res)=>{
 //         }
 //     })
 // })
+
+//sign up
 app.post("/signup", async (req, res) => {
     try {
         const { email } = req.body;
@@ -73,5 +75,34 @@ app.post("/signup", async (req, res) => {
     }
 });
 
+//login api
+app.post("/login",async (req, res)=>{
+    console.log(req.body)
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).send({ message: "Email is required" });
+        }
+
+        const result = await userModel.findOne({ email: email });
+        
+        if (result) {
+            const dataSend = {
+                _id: result._id,
+                firstName: result.firstName,
+                lastName: result.lastName,
+                email: result.email,
+                image: result.image,
+            }
+            console.log(dataSend);
+            return res.status(200).send({ message: "Login is successfully", alert: true, data: dataSend });
+        } else {
+            return res.status(400).send({ message: "Email is not available, please sign up", alert : false });
+        }
+    } catch (err) {
+        console.error(err);
+        return res.status(500).send({ message: "An error occurred during signup" });
+    }
+})
 
 app.listen(PORT, ()=>console.log("Server is running at port : "+ PORT))
