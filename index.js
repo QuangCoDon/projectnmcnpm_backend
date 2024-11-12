@@ -9,7 +9,6 @@ app.use(express.json({limit: "10mb"}))
 
 const PORT = process.env.PORT || 8080
 //mongodb connection
-console.log(process.env.MONGODB_URL)
 mongoose.set('strictQuery', false)
 mongoose.connect(process.env.MONGODB_URL)
 .then(()=>console.log("Connect to Database"))
@@ -129,5 +128,26 @@ app.get("/product", async (req, res)=>{
     const data = await productModel.find({})
     res.send(JSON.stringify(data))
 })
+
+// payment api
+// Mock payment endpoint
+app.post("/create-mock-checkout-session", async (req, res) => {    
+    try {
+        // Dữ liệu giả lập phản hồi từ một cổng thanh toán
+        const mockSession = {
+            sessionId: "mock_session_id_123456",
+            message: "This is a mock payment session",
+            paymentUrl: `${process.env.FRONTEND_URL}/success`,  // URL giả lập sau khi thanh toán thành công
+            cancelUrl: `${process.env.FRONTEND_URL}/cancel`,  // URL giả lập sau khi thanh toán bị hủy
+        };
+        
+        // Trả về session giả lập
+        res.status(200).json(mockSession);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "An error occurred in the mock payment" });
+    }
+});
+
 
 app.listen(PORT, ()=>console.log("Server is running at port : "+ PORT))
