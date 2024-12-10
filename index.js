@@ -198,8 +198,6 @@ app.post('/create-mock-checkout-session', async (req, res) => {
   }
 });
 
-//Gửi kết nối messages phản hồi với database
-app.listen(PORT, () => console.log('Server is running at port : ' + PORT));
 
 const contactSchema = mongoose.Schema({
   name: String,
@@ -247,3 +245,6 @@ app.get('/get-contacts', async (req, res) => {
     res.status(500).json({ message: 'Error fetching contact data.' });
   }
 });
+
+//Gửi kết nối messages phản hồi với database
+app.listen(PORT, () => console.log('Server is running at port : ' + PORT));
