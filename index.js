@@ -41,22 +41,7 @@ const userModel = mongoose.model('user', userSchema);
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
-// app.post("/signup", async (req, res)=>{
-//     console.log(req.body)
-//     const [email] = req.body
-//     userModel.findOne({email : email}, (err, result)=>{
-//         console.log(result)
-//         console.log(err);
-//         if(result){
-//             res.send({message : "Email id is alreadt register"})
-//         }
-//         else {
-//             const data = userModel(req.body)
-//             const save = data.save()
-//             res.send({message : "Successfully sign up"})
-//         }
-//     })
-// })
+
 
 //sign up
 app.post('/signup', async (req, res) => {
@@ -150,9 +135,31 @@ app.get('/product', async (req, res) => {
   const data = await productModel.find({});
   res.send(JSON.stringify(data));
 });
+app.get('/product/search', async (req, res) => {
+  try {
+    const { name } = req.query;
+
+    if (!name || name.trim() === '') {
+      console.log('Search term missing');
+      return res.status(400).json({ error: 'Search term is required' });
+    }
+
+    // Sử dụng regex để tìm kiếm sản phẩm theo tên
+    const query = { name: { $regex: name, $options: 'i'  } }; // options: i => không phân biệt chữ hoa, chữ thường
+    const data = await productModel.find(query); 
+    // console.log('Search Query:', query); // Log query để kiểm tra
+    // console.log('Search Results:', data); // Log kết quả từ database
+    res.status(200).json(data); 
+  } catch (error) {
+    console.error('Error searching for products:', error);
+    res.status(500).json({ error: 'Failed to search for products' });
+  }
+});
+
+
 
 // payment api
-// Mock payment endpoint
+// mock payment endpoint
 app.post('/create-mock-checkout-session', async (req, res) => {
   try {
     const items = req.body;
@@ -172,8 +179,7 @@ app.post('/create-mock-checkout-session', async (req, res) => {
       (acc, item) => acc + item.price * item.qty,
       0,
     );
-    if (totalAmount < 10) {
-      // Giả sử tổng giá trị cần tối thiểu là $10
+    if (totalAmount < 15) {
       return res
         .status(400)
         .json({ error: 'Total amount is too low for checkout.' });
@@ -181,11 +187,10 @@ app.post('/create-mock-checkout-session', async (req, res) => {
     const mockSession = {
       sessionId: 'mock_session_id_123456',
       message: 'This is a mock payment session',
-      paymentUrl: `${process.env.FRONTEND_URL}/success`, // URL giả lập sau khi thanh toán thành công
-      cancelUrl: `${process.env.FRONTEND_URL}/cancel`, // URL giả lập sau khi thanh toán bị hủy
+      paymentUrl: `${process.env.FRONTEND_URL}/success`, 
+      cancelUrl: `${process.env.FRONTEND_URL}/cancel`, 
     };
 
-    // Trả về session giả lập
     res.status(200).json(mockSession);
   } catch (err) {
     console.error(err);
