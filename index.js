@@ -193,4 +193,52 @@ app.post('/create-mock-checkout-session', async (req, res) => {
   }
 });
 
+//Gửi kết nối messages phản hồi với database
 app.listen(PORT, () => console.log('Server is running at port : ' + PORT));
+
+const contactSchema = mongoose.Schema({
+  name: String,
+  email: String,
+  phone: String,
+  message: String,
+  createdAt: { type: Date, default: Date.now },
+});
+
+const contactModel = mongoose.model('Contact', contactSchema);
+
+// API để nhận dữ liệu form
+app.post('/submit-contact', async (req, res) => {
+  try {
+    const { name, email, phone, message } = req.body;
+
+    if (!name || !email || !phone || !message) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    // Lưu vào MongoDB
+    const newContact = new contactModel({
+      name,
+      email,
+      phone,
+      message,
+    });
+
+    await newContact.save();
+
+    res.status(200).json({ message: 'Form submitted successfully!' });
+  } catch (error) {
+    console.error('Error saving contact form:', error);
+    res.status(500).json({ message: 'Error submitting the form.' });
+  }
+});
+
+// API để lấy danh sách đánh giá từ MongoDB
+app.get('/get-contacts', async (req, res) => {
+  try {
+    const contacts = await contactModel.find().sort({ createdAt: -1 }); // Sắp xếp theo ngày tạo (mới nhất trước)
+    res.status(200).json(contacts);
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ message: 'Error fetching contact data.' });
+  }
+});
