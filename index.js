@@ -1,15 +1,8 @@
-<<<<<<< HEAD
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv").config();
-=======
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv').config();
 const nodemailer = require('nodemailer');
->>>>>>> 5c63850f989fba77919c87c040024d76a23b3207
 
 const app = express();
 const transporter = nodemailer.createTransport({
@@ -30,11 +23,6 @@ app.use(
 );
 
 const PORT = process.env.PORT || 8080;
-<<<<<<< HEAD
-
-// MongoDB Connection
-mongoose.set("strictQuery", false);
-=======
 // Tự động xóa các email chưa xác thực OTP sau 5 phút
 setInterval(async () => {
   try {
@@ -53,7 +41,6 @@ setInterval(async () => {
 
 //mongodb connection
 mongoose.set('strictQuery', false);
->>>>>>> 5c63850f989fba77919c87c040024d76a23b3207
 mongoose
   .connect(process.env.MONGODB_URL)
   .then(() => console.log("Connected to Database"))
@@ -136,40 +123,6 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-<<<<<<< HEAD
-// User APIs
-app.post("/signup", async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).send({ message: "Email is required" });
-    }
-
-    const result = await userModel.findOne({ email });
-
-    if (result) {
-      return res
-        .status(400)
-        .send({ message: "Email is already registered", alert: false });
-    } else {
-      const newUser = new userModel(req.body);
-      await newUser.save();
-      return res
-        .status(200)
-        .send({ message: "Successfully signed up", alert: true });
-    }
-  } catch (err) {
-    console.error(err);
-    return res.status(500).send({ message: "An error occurred during signup" });
-  }
-});
-
-app.post("/login", async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).send({ message: "Email is required" });
-=======
 // api send-otp post
 app.post('/send-otp', async (req, res) => {
   const { firstName, lastName, password, confirmPassword, email, image } = req.body;
@@ -257,26 +210,11 @@ app.post('/login', async (req, res) => {
     const { email, password, isVerified } = req.body;
     if (!email || !password) {
       return res.status(400).send({ message: 'Email and password is required' });
->>>>>>> 5c63850f989fba77919c87c040024d76a23b3207
     }
 
     const result = await userModel.findOne({ email });
 
     if (result) {
-<<<<<<< HEAD
-      const dataSend = {
-        _id: result._id,
-        firstName: result.firstName,
-        lastName: result.lastName,
-        email: result.email,
-        image: result.image,
-      };
-      return res.status(200).send({
-        message: "Login is successfully",
-        alert: true,
-        data: dataSend,
-      });
-=======
       if (result.isVerified) {
         if(password === result.password) {
           const dataSend = {
@@ -305,7 +243,6 @@ app.post('/login', async (req, res) => {
       } else {
         return res.status(403).json({ message: 'Account not verified. Please verify your email.' });
       }
->>>>>>> 5c63850f989fba77919c87c040024d76a23b3207
     } else {
       return res.status(400).send({
         message: "Email is not available, please sign up",
