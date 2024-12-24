@@ -79,6 +79,8 @@ const userSchema = mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  resetOtp: String,
+  resetOtpExpires: Date,
 });
 
 //
@@ -165,6 +167,98 @@ app.post('/verify-otp', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+//// API gửi OTP
+app.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ 
+        message: 'Email không tồn tại trong hệ thống', 
+        alert: false 
+      });
+    }
+
+    // Tạo OTP 6 số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetOtpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+
+    // Lưu OTP vào database
+    user.resetOtp = otp;
+    user.resetOtpExpires = resetOtpExpires;
+    await user.save();
+
+    // Gửi email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Mã OTP đặt lại mật khẩu',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Mã OTP đặt lại mật khẩu của bạn</h2>
+          <p>Mã OTP của bạn là: <strong>${otp}</strong></p>
+          <p>Mã này sẽ hết hạn sau 5 phút.</p>
+          <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ 
+      message: 'Mã OTP đã được gửi đến email của bạn',
+      alert: true 
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ 
+      message: 'Đã có lỗi xảy ra, vui lòng thử lại sau',
+      alert: false 
+    });
+  }
+});
+
+// API đặt lại mật khẩu với OTP
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    const user = await userModel.findOne({
+      email,
+      resetOtp: otp,
+      resetOtpExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        message: 'Mã OTP không hợp lệ hoặc đã hết hạn',
+        alert: false 
+      });
+    }
+
+    // Cập nhật mật khẩu và xóa OTP
+    user.password = newPassword;
+    user.confirmPassword = newPassword;
+    user.resetOtp = undefined;
+    user.resetOtpExpires = undefined;
+    await user.save();
+
+    res.json({ 
+      message: 'Đặt lại mật khẩu thành công',
+      alert: true 
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ 
+      message: 'Đã có lỗi xảy ra, vui lòng thử lại sau',
+      alert: false 
+    });
   }
 });
 
@@ -268,7 +362,118 @@ app.get('/product/search', async (req, res) => {
   }
 });
 
+// API kiểm tra token hợp lệ
+app.get('/verify-reset-token/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const user = await userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
 
+    if (!user) {
+      return res.status(400).json({
+        message: 'Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
+        valid: false
+      });
+    }
+
+    res.json({ valid: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server', valid: false });
+  }
+});
+
+// API endpoint để gửi email quên mật khẩu
+app.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ 
+        message: 'Email không tồn tại trong hệ thống', 
+        alert: false 
+      });
+    }
+
+    // Tạo token reset password
+    const resetToken = Math.random().toString(36).slice(-8);
+    const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
+
+    // Lưu token vào database
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = resetPasswordExpires;
+    await user.save();
+
+    // Gửi email
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Đặt lại mật khẩu',
+      html: `
+        <h1>Yêu cầu đặt lại mật khẩu</h1>
+        <p>Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng click vào link bên dưới để đặt lại mật khẩu:</p>
+        <a href="${resetLink}">Đặt lại mật khẩu</a>
+        <p>Link này sẽ hết hạn sau 15 phút.</p>
+        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ 
+      message: 'Hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn',
+      alert: true 
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ 
+      message: 'Đã có lỗi xảy ra, vui lòng thử lại sau',
+      alert: false 
+    });
+  }
+});
+
+// API endpoint để đặt lại mật khẩu
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    const user = await userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        message: 'Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
+        alert: false 
+      });
+    }
+
+    // Cập nhật mật khẩu mới
+    user.password = newPassword;
+    user.confirmPassword = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ 
+      message: 'Mật khẩu đã được đặt lại thành công',
+      alert: true 
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ 
+      message: 'Đã có lỗi xảy ra, vui lòng thử lại sau',
+      alert: false 
+    });
+  }
+});
 
 // payment api
 // mock payment endpoint
