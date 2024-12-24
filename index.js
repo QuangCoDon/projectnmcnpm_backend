@@ -453,21 +453,25 @@ const updateInfoSchema = mongoose.Schema({
 const updateInfoModel = mongoose.model("UpdateInfo", updateInfoSchema);
 
 // API để nhận dữ liệu form cập nhật thông tin khách hàng
-app.put("/update-customer-info", async (req, res) => {
+app.post("/update-customer-info", async (req, res) => {
   try {
     const { fullName, email, phone, address, dob } = req.body;
 
     // Kiểm tra dữ liệu có đủ không
-    if (!fullName || !email || !phone || !address || !dob) {
+    if ( !fullName || !email || !phone || !address || !dob) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
     // Cập nhật thông tin vào MongoDB
     const updatedInfo = await updateInfoModel.findOneAndUpdate(
-      { email }, // Giả sử sử dụng email để tìm khách hàng
-      { fullName, email, phone, address, dob },
-      { new: true, upsert: true } // Cập nhật hoặc tạo mới nếu không tìm thấy
+      { email }, // Sử dụng _id để tìm khách hàng
+      { fullName, phone, address, dob },
+      { new: true } // Cập nhật thông tin và trả về đối tượng đã cập nhật
     );
+
+    if (!updatedInfo) {
+      return res.status(404).json({ message: "Customer not found." });
+    }
 
     // Trả về phản hồi thành công
     res.status(200).json({ message: "Information updated successfully!" });
@@ -480,7 +484,8 @@ app.put("/update-customer-info", async (req, res) => {
 // API để lấy tất cả thông tin khách hàng
 app.get('/get-customer-info/:id', async (req, res) => {
   try {
-    const customer = await updateInfoModel.findById(req.params.id);
+    // Tìm khách hàng theo email
+    const customer = await updateInfoModel.findOne({ email: req.params.email });
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
