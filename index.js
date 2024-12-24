@@ -284,6 +284,34 @@ app.get("/product", async (req, res) => {
     res.status(500).send({ message: "Failed to fetch products" });
   }
 });
+app.post('/uploadProduct', async (req, res) => {
+  console.log(req.body);
+  const data = productModel(req.body);
+  const datasave = await data.save();
+  res.send({ message: 'Upload successfully' });
+});
+
+app.get('/product/search', async (req, res) => {
+  try {
+    const { name } = req.query;
+
+    if (!name || name.trim() === '') {
+      console.log('Search term missing');
+      return res.status(400).json({ error: 'Search term is required' });
+    }
+
+    // Sử dụng regex để tìm kiếm sản phẩm theo tên
+    const query = { name: { $regex: name, $options: 'i'  } }; // options: i => không phân biệt chữ hoa, chữ thường
+    const data = await productModel.find(query); 
+    // console.log('Search Query:', query); // Log query để kiểm tra
+    // console.log('Search Results:', data); // Log kết quả từ database
+    res.status(200).json(data); 
+  } catch (error) {
+    console.error('Error searching for products:', error);
+    res.status(500).json({ error: 'Failed to search for products' });
+  }
+});
+
 
 // Discount APIs
 app.post("/uploadDiscount", async (req, res) => {
