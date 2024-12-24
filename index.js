@@ -43,10 +43,10 @@ setInterval(async () => {
 mongoose.set("strictQuery", false);
 mongoose
   .connect(process.env.MONGODB_URL)
-  .then(() => console.log("Connect to Database"))
-  .catch((err) => console.log(err));
+  .then(() => console.log("Connected to Database"))
+  .catch((err) => console.log("Error connecting to MongoDB:", err));
 
-//schema
+// Schemas
 const userSchema = mongoose.Schema({
   firstName: {
     type: String,
@@ -82,11 +82,11 @@ const userSchema = mongoose.Schema({
 });
 
 //
-const userModel = mongoose.model("user", userSchema);
+const userModel = mongoose.model('user', userSchema);
 
 //api
-app.get("/", (req, res) => {
-  res.send("Server is running");
+app.get('/', (req, res) => {
+  res.send('Server is running');
 });
 
 // api send-otp post
@@ -186,7 +186,7 @@ app.post("/login", async (req, res) => {
         .send({ message: "Email and password is required" });
     }
 
-    const result = await userModel.findOne({ email: email });
+    const result = await userModel.findOne({ email });
 
     if (result) {
       if (result.isVerified) {
@@ -223,58 +223,117 @@ app.post("/login", async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    return res.status(500).send({ message: "An error occurred during signup" });
+    return res.status(500).send({ message: "An error occurred during login" });
   }
 });
 
-//product section
-
-const schemaProduct = mongoose.Schema({
-  name: String,
-  category: String,
-  image: String,
-  price: String,
-  description: String,
-});
-const productModel = mongoose.model("product", schemaProduct);
-
-// save product in database
-// api
+// Product APIs
 app.post("/uploadProduct", async (req, res) => {
-  console.log(req.body);
-  const data = productModel(req.body);
-  const datasave = await data.save();
-  res.send({ message: "Upload successfully" });
+  try {
+    const data = new productModel(req.body);
+    await data.save();
+    res.status(200).send({ message: "Product uploaded successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ message: "Failed to upload product" });
+  }
 });
 
 app.get("/product", async (req, res) => {
-  const data = await productModel.find({});
-  res.send(JSON.stringify(data));
-});
-app.get("/product/search", async (req, res) => {
   try {
-    const { name } = req.query;
+    const data = await productModel.find({});
+    res.status(200).json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ message: "Failed to fetch products" });
+  }
+});
 
-    if (!name || name.trim() === "") {
-      console.log("Search term missing");
-      return res.status(400).json({ error: "Search term is required" });
+// Discount APIs
+app.post("/uploadDiscount", async (req, res) => {
+  try {
+    console.log("Received Discount Data:", req.body);
+
+    const {
+      code,
+      type,
+      value,
+      startDate,
+      endDate,
+
+      timeFrame,
+      minimumOrderValue,
+      minimumItems,
+      applicableCategories,
+      usageLimit,
+    } = req.body;
+
+    if (
+      !code ||
+      !type ||
+      !value ||
+      !startDate ||
+      !endDate ||
+      !timeFrame.start ||
+      !timeFrame.end ||
+      !minimumOrderValue ||
+      !minimumItems ||
+      applicableCategories.length === 0 ||
+      !usageLimit
+    ) {
+      return res.status(400).send({ message: "Missing required fields" });
     }
 
-    // Sử dụng regex để tìm kiếm sản phẩm theo tên
-    const query = { name: { $regex: name, $options: "i" } }; // options: i => không phân biệt chữ hoa, chữ thường
-    const data = await productModel.find(query);
-    // console.log('Search Query:', query); // Log query để kiểm tra
-    // console.log('Search Results:', data); // Log kết quả từ database
-    res.status(200).json(data);
-  } catch (error) {
-    console.error("Error searching for products:", error);
-    res.status(500).json({ error: "Failed to search for products" });
+    const newDiscount = new discountModel(req.body);
+    await newDiscount.save();
+    res.status(200).send({ message: "Discount added successfully!" });
+  } catch (err) {
+    console.error("Error uploading discount:", err);
+    res.status(500).send({ message: "Failed to add discount" });
+  }
+});
+
+app.get("/discounts", async (req, res) => {
+  try {
+    const discounts = await discountModel.find({});
+    res.status(200).json(discounts);
+  } catch (err) {
+    console.error("Error fetching discounts:", err);
+    res.status(500).send({ message: "Failed to fetch discounts" });
+  }
+});
+
+// Contact APIs
+app.post("/submit-contact", async (req, res) => {
+  try {
+    const { name, email, phone, message } = req.body;
+
+    if (!name || !email || !phone || !message) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    const newContact = new contactModel({ name, email, phone, message });
+    await newContact.save();
+    res.status(200).json({ message: "Form submitted successfully!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error submitting the form." });
+  }
+});
+
+app.get("/get-contacts", async (req, res) => {
+  try {
+    const contacts = await contactModel.find().sort({ createdAt: -1 });
+    res.status(200).json(contacts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching contact data." });
   }
 });
 
 // payment api
 // mock payment endpoint
-app.post("/create-mock-checkout-session", async (req, res) => {
+app.post('/create-mock-checkout-session', async (req, res) => {
   try {
     const items = req.body;
     if (!items || items.length === 0) {
