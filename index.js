@@ -80,13 +80,47 @@ const userSchema = mongoose.Schema({
     default: false,
   },
 });
+const userModel = mongoose.model("user", userSchema);
 
-//
-const userModel = mongoose.model('user', userSchema);
+const productSchema = mongoose.Schema({
+  name: String,
+  category: String,
+  image: String,
+  price: String,
+  description: String,
+});
+const productModel = mongoose.model("product", productSchema);
 
-//api
-app.get('/', (req, res) => {
-  res.send('Server is running');
+const contactSchema = mongoose.Schema({
+  name: String,
+  email: String,
+  phone: String,
+  message: String,
+  createdAt: { type: Date, default: Date.now },
+});
+const contactModel = mongoose.model("Contact", contactSchema);
+
+const discountSchema = mongoose.Schema({
+  code: { type: String, required: true },
+  type: { type: String, required: true },
+  value: { type: Number, required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+
+  timeFrame: {
+    start: { type: String, required: true },
+    end: { type: String, required: true },
+  },
+  minimumOrderValue: { type: Number, required: true },
+  minimumItems: { type: Number, required: true },
+  applicableCategories: { type: [String], required: true },
+  usageLimit: { type: Number, required: true },
+});
+const discountModel = mongoose.model("Discount", discountSchema);
+
+// APIs
+app.get("/", (req, res) => {
+  res.send("Server is running");
 });
 
 // api send-otp post
@@ -368,16 +402,6 @@ app.post('/create-mock-checkout-session', async (req, res) => {
     res.status(500).json({ message: "An error occurred in the mock payment" });
   }
 });
-
-const contactSchema = mongoose.Schema({
-  name: String,
-  email: String,
-  phone: String,
-  message: String,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const contactModel = mongoose.model("Contact", contactSchema);
 
 // API để nhận dữ liệu form
 app.post("/submit-contact", async (req, res) => {
